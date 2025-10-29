@@ -11,6 +11,8 @@ const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const sttRoutes = require('./routes/sttRoutes');
 const ttsRoutes = require('./routes/ttsRoutes');
 const audioManagerRoutes = require('./routes/audioManagerRoutes');
+const backupRoutes = require('./routes/backupRoutes');
+const { setupAutoBackup } = require('./controllers/backupController');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -57,6 +59,7 @@ app.get('/health', (req, res) => {
 app.use('/api/stt', sttRoutes);
 app.use('/api/tts', ttsRoutes);
 app.use('/api/audio-manager', audioManagerRoutes);
+app.use('/api/backup', backupRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {
@@ -87,6 +90,13 @@ app.get('/api', (req, res) => {
         delete: 'DELETE /api/audio-manager/delete/:id',
         statistics: 'GET /api/audio-manager/statistics',
       },
+      backup: {
+        create: 'POST /api/backup/create',
+        list: 'GET /api/backup/list',
+        download: 'GET /api/backup/download/:filename',
+        restore: 'POST /api/backup/restore/:filename',
+        delete: 'DELETE /api/backup/delete/:filename',
+      },
     },
     documentation: 'See README.md for detailed API documentation',
     adminPanel: 'http://localhost:' + PORT + '/',
@@ -106,6 +116,9 @@ const startServer = async () => {
     // Sync database models
     await sequelize.sync({ alter: process.env.NODE_ENV === 'development' });
     console.log('Database synchronized');
+
+    // Setup automatic backups
+    setupAutoBackup();
 
     // Start server
     app.listen(PORT, () => {

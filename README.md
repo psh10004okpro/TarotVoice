@@ -78,6 +78,11 @@ ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
 # Naver Clova
 NAVER_CLIENT_ID=your_naver_client_id_here
 NAVER_CLIENT_SECRET=your_naver_client_secret_here
+
+# Automatic Backup Settings (Optional)
+AUTO_BACKUP_ENABLED=true
+AUTO_BACKUP_INTERVAL_HOURS=24
+MAX_AUTO_BACKUPS=10
 ```
 
 4. Start the server:
@@ -137,6 +142,66 @@ Open your browser and navigate to `http://localhost:3000/` to access the audio f
    // Download URL format
    http://localhost:3000/api/audio-manager/download/{fileId}
    ```
+
+## Database Backup & Protection
+
+### SQLite Protection Measures
+
+The system implements multiple layers of protection for your SQLite database:
+
+1. **Git Ignore**: Database files (*.sqlite, *.db) are automatically excluded from version control
+2. **Automatic Backups**: Scheduled automatic backups (configurable)
+3. **Manual Backups**: API endpoints for on-demand backups
+4. **Backup Storage**: All backups stored in `/backups` directory (also git-ignored)
+
+### Automatic Backup Configuration
+
+Enable automatic backups in your `.env` file:
+
+```env
+AUTO_BACKUP_ENABLED=true          # Enable/disable automatic backups
+AUTO_BACKUP_INTERVAL_HOURS=24     # Backup every 24 hours
+MAX_AUTO_BACKUPS=10               # Keep last 10 automatic backups
+```
+
+When enabled, the system will:
+- Automatically create backups at specified intervals
+- Keep only the most recent backups (configurable)
+- Store backups in `/backups/auto_backup_YYYY-MM-DD_HH-MM-SS.sqlite`
+
+### Manual Backup Operations
+
+Use the backup API endpoints to manually manage backups:
+
+```bash
+# Create a backup
+curl -X POST http://localhost:3000/api/backup/create
+
+# List all backups
+curl http://localhost:3000/api/backup/list
+
+# Download a backup
+curl -O http://localhost:3000/api/backup/download/database_backup_2024-01-01_12-00-00.sqlite
+
+# Restore from backup
+curl -X POST http://localhost:3000/api/backup/restore/database_backup_2024-01-01_12-00-00.sqlite
+
+# Delete a backup
+curl -X DELETE http://localhost:3000/api/backup/delete/database_backup_2024-01-01_12-00-00.sqlite
+```
+
+### Scaling to Production Databases
+
+For production environments or larger scale deployments, consider migrating to PostgreSQL or MySQL:
+
+**Benefits:**
+- Better concurrent connection handling
+- More robust data integrity
+- Advanced features (full-text search, JSON support)
+- Professional backup tools
+- Better performance at scale
+
+See `src/config/database-config.md` for detailed migration instructions.
 
 ## API Documentation
 
@@ -570,6 +635,114 @@ Response:
       }
     ]
   }
+}
+```
+
+### Database Backup APIs
+
+#### Create Backup
+
+Create a manual backup of the database.
+
+```http
+POST /api/backup/create
+
+Response:
+{
+  "success": true,
+  "message": "Database backup created successfully",
+  "data": {
+    "backupFile": "database_backup_2024-01-01_12-00-00.sqlite",
+    "backupPath": "/full/path/to/backups/database_backup_2024-01-01_12-00-00.sqlite",
+    "size": 245678,
+    "timestamp": "2024-01-01T12:00:00.000Z"
+  }
+}
+```
+
+#### List Backups
+
+Get a list of all available backup files.
+
+```http
+GET /api/backup/list
+
+Response:
+{
+  "success": true,
+  "data": {
+    "backups": [
+      {
+        "filename": "database_backup_2024-01-01_12-00-00.sqlite",
+        "size": 245678,
+        "created": "2024-01-01T12:00:00.000Z",
+        "modified": "2024-01-01T12:00:00.000Z"
+      },
+      {
+        "filename": "auto_backup_2024-01-01_00-00-00.sqlite",
+        "size": 243210,
+        "created": "2024-01-01T00:00:00.000Z",
+        "modified": "2024-01-01T00:00:00.000Z"
+      }
+    ],
+    "total": 2
+  }
+}
+```
+
+#### Download Backup
+
+Download a specific backup file.
+
+```http
+GET /api/backup/download/:filename
+
+Example:
+GET /api/backup/download/database_backup_2024-01-01_12-00-00.sqlite
+
+Response:
+- Downloads the backup file
+```
+
+#### Restore Backup
+
+Restore the database from a backup file.
+
+```http
+POST /api/backup/restore/:filename
+
+Example:
+POST /api/backup/restore/database_backup_2024-01-01_12-00-00.sqlite
+
+Response:
+{
+  "success": true,
+  "message": "Database restored successfully from backup",
+  "data": {
+    "restoredFrom": "database_backup_2024-01-01_12-00-00.sqlite"
+  }
+}
+```
+
+**Important Notes:**
+- Before restoring, a backup of the current database is automatically created
+- The server will briefly disconnect and reconnect to the database during restoration
+- All active connections will be closed during the restore process
+
+#### Delete Backup
+
+Delete a backup file.
+
+```http
+DELETE /api/backup/delete/:filename
+
+Example:
+DELETE /api/backup/delete/database_backup_2024-01-01_12-00-00.sqlite
+
+Response:
+{
+  "success": true,
+  "message": "Backup 'database_backup_2024-01-01_12-00-00.sqlite' deleted successfully"
 }
 ```
 

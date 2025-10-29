@@ -1,127 +1,127 @@
-# Cloudflare R2 Setup Guide
+# Cloudflare R2 설정 가이드
 
-This guide explains how to set up Cloudflare R2 for CDN-based audio file storage with your TarotVoice API server.
+이 가이드는 TarotVoice API 서버에서 CDN 기반 오디오 파일 저장소로 Cloudflare R2를 설정하는 방법을 설명합니다.
 
-## What is Cloudflare R2?
+## Cloudflare R2란?
 
-Cloudflare R2 is an S3-compatible object storage service that:
-- **Zero egress fees**: No charges for bandwidth/data transfer
-- **Global CDN**: Files served from Cloudflare's edge network worldwide
-- **S3-compatible**: Works with existing S3 tools and libraries
-- **Cost-effective**: 10GB free storage, then $0.015/GB/month
+Cloudflare R2는 S3 호환 객체 저장소 서비스로 다음과 같은 특징이 있습니다:
+- **송신 비용 없음**: 대역폭/데이터 전송에 대한 요금 없음
+- **글로벌 CDN**: 전 세계 Cloudflare 엣지 네트워크에서 파일 제공
+- **S3 호환**: 기존 S3 도구 및 라이브러리와 호환
+- **비용 효율적**: 10GB 무료 저장소, 이후 $0.015/GB/월
 
-## Why Use R2 with Railway?
+## Railway에서 R2를 사용하는 이유는?
 
-When deploying to Railway + R2:
-- **Reduce Railway costs**: Files served directly from R2 CDN (no Railway bandwidth usage)
-- **Better performance**: Cloudflare's global CDN is faster than serving from Railway
-- **Persistent storage**: Railway's filesystem is ephemeral; R2 provides permanent storage
-- **Scalability**: Handle thousands of concurrent streams without Railway load
+Railway + R2로 배포할 때:
+- **Railway 비용 절감**: R2 CDN에서 직접 파일 제공 (Railway 대역폭 사용 없음)
+- **더 나은 성능**: Railway에서 직접 제공하는 것보다 Cloudflare 글로벌 CDN이 더 빠름
+- **영구 저장소**: Railway의 파일 시스템은 임시적; R2는 영구 저장소 제공
+- **확장성**: Railway 부하 없이 수천 개의 동시 스트림 처리
 
-## Prerequisites
+## 사전 준비
 
-- Cloudflare account (free tier available)
-- Railway deployment (see RAILWAY_DEPLOYMENT.md)
-- Credit card for Cloudflare R2 (free tier available, no charges unless you exceed it)
+- Cloudflare 계정 (무료 요금제 제공)
+- Railway 배포 (RAILWAY_DEPLOYMENT.md 참조)
+- Cloudflare R2용 신용카드 (무료 요금제 제공, 초과하지 않는 한 청구 없음)
 
-## Step 1: Create R2 Bucket
+## 1단계: R2 버킷 생성
 
-1. **Login to Cloudflare Dashboard**
-   - Go to https://dash.cloudflare.com/
-   - Navigate to **R2** in the left sidebar
+1. **Cloudflare 대시보드 로그인**
+   - https://dash.cloudflare.com/ 접속
+   - 왼쪽 사이드바에서 **R2**로 이동
 
-2. **Create a Bucket**
-   - Click **"Create bucket"**
-   - **Bucket name**: `tarotvoice-audio` (or your preferred name)
-   - **Location**: Choose **"Automatic"** for global distribution
-   - Click **"Create bucket"**
+2. **버킷 생성**
+   - **"Create bucket"** 클릭
+   - **버킷 이름**: `tarotvoice-audio` (또는 원하는 이름)
+   - **위치**: 글로벌 배포를 위해 **"Automatic"** 선택
+   - **"Create bucket"** 클릭
 
-3. **Configure Public Access** (Important!)
-   - Click on your newly created bucket
-   - Go to **Settings** tab
-   - Scroll to **"Public Access"** section
-   - Click **"Allow Access"** or **"Connect Domain"**
+3. **공개 액세스 설정** (중요!)
+   - 새로 생성된 버킷 클릭
+   - **Settings** 탭으로 이동
+   - **"Public Access"** 섹션으로 스크롤
+   - **"Allow Access"** 또는 **"Connect Domain"** 클릭
 
-   **Option A: R2.dev subdomain (Easiest)**
-   - Click **"Allow Access"**
-   - Cloudflare will provide a public URL like: `https://tarotvoice-audio.1234567890abcdef.r2.dev`
-   - Copy this domain for later use
+   **옵션 A: R2.dev 서브도메인 (가장 쉬움)**
+   - **"Allow Access"** 클릭
+   - Cloudflare가 다음과 같은 공개 URL 제공: `https://tarotvoice-audio.1234567890abcdef.r2.dev`
+   - 나중에 사용할 이 도메인 복사
 
-   **Option B: Custom domain (Recommended for production)**
-   - Click **"Connect Domain"**
-   - Enter your domain: `cdn.yourdomain.com`
-   - Add the CNAME record to your DNS settings as instructed
-   - Wait for DNS propagation (usually 5-10 minutes)
+   **옵션 B: 커스텀 도메인 (프로덕션 권장)**
+   - **"Connect Domain"** 클릭
+   - 도메인 입력: `cdn.yourdomain.com`
+   - 안내에 따라 DNS 설정에 CNAME 레코드 추가
+   - DNS 전파 대기 (보통 5-10분)
 
-## Step 2: Generate API Tokens
+## 2단계: API 토큰 생성
 
-1. **Create R2 API Token**
-   - In R2 dashboard, click **"Manage R2 API Tokens"**
-   - Click **"Create API Token"**
+1. **R2 API 토큰 생성**
+   - R2 대시보드에서 **"Manage R2 API Tokens"** 클릭
+   - **"Create API Token"** 클릭
 
-2. **Token Configuration**
-   - **Token name**: `tarotvoice-api-server`
-   - **Permissions**: Select **"Object Read & Write"**
-   - **TTL**: Leave blank (no expiration) or set as needed
-   - **Specific bucket**: Select your `tarotvoice-audio` bucket
-   - Click **"Create API Token"**
+2. **토큰 설정**
+   - **토큰 이름**: `tarotvoice-api-server`
+   - **권한**: **"Object Read & Write"** 선택
+   - **TTL**: 비워두기 (만료 없음) 또는 필요에 따라 설정
+   - **특정 버킷**: `tarotvoice-audio` 버킷 선택
+   - **"Create API Token"** 클릭
 
-3. **Save Credentials** (Important - shown only once!)
+3. **자격 증명 저장** (중요 - 한 번만 표시됨!)
    ```
    Access Key ID: abc123...
    Secret Access Key: xyz789...
    Account ID: 1234567890abcdef
    ```
-   - **Copy these values immediately** - you won't see them again!
+   - **이 값들을 즉시 복사하세요** - 다시 볼 수 없습니다!
 
-## Step 3: Configure Railway Environment Variables
+## 3단계: Railway 환경 변수 설정
 
-1. **Go to Railway Project**
-   - Open your Railway project dashboard
-   - Click on your **tarotvoice-api-server** service
-   - Go to **Variables** tab
+1. **Railway 프로젝트로 이동**
+   - Railway 프로젝트 대시보드 열기
+   - **tarotvoice-api-server** 서비스 클릭
+   - **Variables** 탭으로 이동
 
-2. **Add R2 Variables**
-   Click **"New Variable"** and add each of these:
+2. **R2 변수 추가**
+   **"New Variable"**을 클릭하고 다음 각 변수를 추가하세요:
 
    ```bash
-   # Enable R2 storage
+   # R2 저장소 활성화
    R2_ENABLED=true
 
-   # Your R2 Account ID (from Step 2)
+   # R2 계정 ID (2단계에서 복사)
    R2_ACCOUNT_ID=1234567890abcdef
 
-   # Your R2 Access Key ID (from Step 2)
+   # R2 액세스 키 ID (2단계에서 복사)
    R2_ACCESS_KEY_ID=abc123...
 
-   # Your R2 Secret Access Key (from Step 2)
+   # R2 시크릿 액세스 키 (2단계에서 복사)
    R2_SECRET_ACCESS_KEY=xyz789...
 
-   # Your bucket name (from Step 1)
+   # 버킷 이름 (1단계에서 설정)
    R2_BUCKET_NAME=tarotvoice-audio
 
-   # Your public domain (from Step 1)
-   # Option A - R2.dev subdomain:
+   # 공개 도메인 (1단계에서 복사)
+   # 옵션 A - R2.dev 서브도메인:
    R2_PUBLIC_DOMAIN=tarotvoice-audio.1234567890abcdef.r2.dev
 
-   # Option B - Custom domain:
+   # 옵션 B - 커스텀 도메인:
    R2_PUBLIC_DOMAIN=cdn.yourdomain.com
    ```
 
-3. **Deploy**
-   - Railway will automatically redeploy with new environment variables
-   - Wait for deployment to complete
+3. **배포**
+   - Railway가 새 환경 변수로 자동 재배포됨
+   - 배포 완료 대기
 
-## Step 4: Verify Configuration
+## 4단계: 설정 확인
 
-1. **Check Server Logs**
-   - In Railway dashboard, go to **Deployments**
-   - Click on the latest deployment
-   - Check logs for: `✓ Cloudflare R2 client initialized successfully`
+1. **서버 로그 확인**
+   - Railway 대시보드에서 **Deployments**로 이동
+   - 최신 배포 클릭
+   - 로그에서 확인: `✓ Cloudflare R2 client initialized successfully`
 
-2. **Test Upload**
+2. **업로드 테스트**
    ```bash
-   # Upload a test audio file
+   # 테스트 오디오 파일 업로드
    curl -X POST https://your-railway-app.up.railway.app/api/audio-manager/upload \
      -F "audio=@test.mp3" \
      -F "id=test-audio-001" \
@@ -129,7 +129,7 @@ When deploying to Railway + R2:
      -F "description=Testing R2 upload"
    ```
 
-3. **Check Response**
+3. **응답 확인**
    ```json
    {
      "message": "Audio file uploaded successfully",
@@ -140,197 +140,197 @@ When deploying to Railway + R2:
      }
    }
    ```
-   - **Important**: `storage` should show `"r2"` (not `"local"`)
-   - `streamUrl` should point to your R2 public domain
+   - **중요**: `storage`가 `"r2"`로 표시되어야 함 (`"local"`이 아님)
+   - `streamUrl`이 R2 공개 도메인을 가리켜야 함
 
-4. **Test Streaming**
-   - Copy the `streamUrl` from the response
-   - Open it in a browser or use curl:
+4. **스트리밍 테스트**
+   - 응답에서 `streamUrl` 복사
+   - 브라우저에서 열거나 curl 사용:
    ```bash
    curl -I https://cdn.yourdomain.com/audio-1234567890-123456789.mp3
    ```
-   - Should return `HTTP/2 200` with audio file headers
+   - 오디오 파일 헤더와 함께 `HTTP/2 200` 반환되어야 함
 
-## Configuration Options
+## 설정 옵션
 
-### Local Fallback
+### 로컬 폴백
 
-If R2 is not configured or fails to connect, the server automatically falls back to local storage:
-- Files stored in `./uploads/audio/`
-- Served through Railway (uses Railway bandwidth)
-- Useful for development/testing
+R2가 설정되지 않았거나 연결에 실패하면 서버가 자동으로 로컬 저장소로 폴백됩니다:
+- 파일이 `./uploads/audio/`에 저장됨
+- Railway를 통해 제공됨 (Railway 대역폭 사용)
+- 개발/테스트에 유용
 
-To disable R2 and use local storage:
+R2를 비활성화하고 로컬 저장소 사용:
 ```bash
 R2_ENABLED=false
 ```
 
-### Hybrid Approach
+### 하이브리드 방식
 
-You can switch between R2 and local storage without code changes:
-- **Development**: Use local storage (`R2_ENABLED=false`)
-- **Production**: Use R2 (`R2_ENABLED=true`)
+코드 변경 없이 R2와 로컬 저장소 간 전환 가능:
+- **개발**: 로컬 저장소 사용 (`R2_ENABLED=false`)
+- **프로덕션**: R2 사용 (`R2_ENABLED=true`)
 
-### Custom Domain vs R2.dev
+### 커스텀 도메인 vs R2.dev
 
-**R2.dev subdomain** (Easier):
-- ✓ Immediate setup (no DNS configuration)
-- ✓ Free
-- ✗ Generic URL
-- ✗ Can't use with some corporate firewalls
+**R2.dev 서브도메인** (더 쉬움):
+- ✓ 즉시 설정 (DNS 설정 불필요)
+- ✓ 무료
+- ✗ 일반적인 URL
+- ✗ 일부 기업 방화벽에서 사용 불가
 
-**Custom domain** (Recommended):
-- ✓ Professional URL
-- ✓ Better branding
-- ✓ Works everywhere
-- ✗ Requires DNS configuration
-- ✗ Takes 5-10 minutes for DNS propagation
+**커스텀 도메인** (권장):
+- ✓ 전문적인 URL
+- ✓ 더 나은 브랜딩
+- ✓ 모든 곳에서 작동
+- ✗ DNS 설정 필요
+- ✗ DNS 전파에 5-10분 소요
 
-## Cost Breakdown
+## 비용 분석
 
-### Cloudflare R2 Pricing
-- **Storage**: 10GB free, then $0.015/GB/month
-- **Class A operations** (writes): 1 million free, then $4.50/million
-- **Class B operations** (reads): 10 million free, then $0.36/million
-- **Egress**: **FREE** (no bandwidth charges)
+### Cloudflare R2 요금
+- **저장소**: 10GB 무료, 이후 $0.015/GB/월
+- **Class A 작업** (쓰기): 100만 건 무료, 이후 $4.50/백만
+- **Class B 작업** (읽기): 1000만 건 무료, 이후 $0.36/백만
+- **송신**: **무료** (대역폭 요금 없음)
 
-### Example Monthly Cost
-For 1000 audio files (100MB each):
-- **Storage**: 100GB = 90GB × $0.015 = **$1.35**
-- **Uploads**: 1000 files = minimal cost
-- **Streams**: 100,000 streams = minimal cost (Class B operations)
-- **Bandwidth**: Unlimited = **$0**
-- **Total**: ~**$1.35/month**
+### 월별 비용 예시
+1000개의 오디오 파일 (각 100MB):
+- **저장소**: 100GB = 90GB × $0.015 = **$1.35**
+- **업로드**: 1000개 파일 = 최소 비용
+- **스트림**: 100,000 스트림 = 최소 비용 (Class B 작업)
+- **대역폭**: 무제한 = **$0**
+- **총계**: ~**$1.35/월**
 
-Compare to Railway alone:
-- **Bandwidth**: 100GB egress × $0.10/GB = **$10/month**
-- **R2 saves**: ~$8.65/month at this scale
+Railway만 사용 시 비교:
+- **대역폭**: 100GB 송신 × $0.10/GB = **$10/월**
+- **R2 절감액**: 이 규모에서 월 ~$8.65
 
-## Troubleshooting
+## 문제 해결
 
 ### "R2 client initialization failed"
 
-**Check credentials**:
+**자격 증명 확인**:
 ```bash
-# In Railway logs, look for:
+# Railway 로그에서 찾기:
 Error initializing R2 client: ...
 ```
 
-**Common issues**:
-1. Wrong Account ID format
-2. Invalid Access Key ID or Secret Access Key
-3. Bucket doesn't exist
-4. API token doesn't have write permissions
+**일반적인 문제**:
+1. 잘못된 계정 ID 형식
+2. 잘못된 액세스 키 ID 또는 시크릿 액세스 키
+3. 버킷이 존재하지 않음
+4. API 토큰에 쓰기 권한이 없음
 
-**Solution**: Double-check all environment variables match Step 2 values
+**해결 방법**: 모든 환경 변수가 2단계 값과 일치하는지 재확인
 
-### "403 Forbidden" when accessing files
+### 파일 액세스 시 "403 Forbidden"
 
-**Issue**: Bucket is not public
+**문제**: 버킷이 공개되지 않음
 
-**Solution**:
-1. Go to R2 dashboard → Your bucket → Settings
-2. Enable public access (see Step 1)
-3. Make sure you're using the correct public domain
+**해결 방법**:
+1. R2 대시보드 → 버킷 → Settings로 이동
+2. 공개 액세스 활성화 (1단계 참조)
+3. 올바른 공개 도메인을 사용하는지 확인
 
-### Files upload but can't be accessed
+### 파일은 업로드되지만 액세스 불가
 
-**Issue**: Wrong `R2_PUBLIC_DOMAIN`
+**문제**: 잘못된 `R2_PUBLIC_DOMAIN`
 
-**Solution**:
-1. Check your R2 bucket's public URL
-2. Update `R2_PUBLIC_DOMAIN` in Railway variables
-3. **Don't include** `https://` in the domain
-4. **Correct**: `cdn.yourdomain.com`
-5. **Wrong**: `https://cdn.yourdomain.com`
+**해결 방법**:
+1. R2 버킷의 공개 URL 확인
+2. Railway 변수에서 `R2_PUBLIC_DOMAIN` 업데이트
+3. 도메인에 `https://` **포함하지 말 것**
+4. **올바름**: `cdn.yourdomain.com`
+5. **잘못됨**: `https://cdn.yourdomain.com`
 
-### Server uses local storage instead of R2
+### 서버가 R2 대신 로컬 저장소 사용
 
-**Check logs**:
+**로그 확인**:
 ```bash
-# Should see:
+# 다음이 표시되어야 함:
 ✓ Cloudflare R2 client initialized successfully
 
-# If you see:
+# 다음이 표시되면:
 ⚠ Cloudflare R2 credentials not fully configured
 ```
 
-**Solution**:
-1. Verify `R2_ENABLED=true` in Railway variables
-2. Check all 5 R2 variables are set
-3. Redeploy the service
+**해결 방법**:
+1. Railway 변수에서 `R2_ENABLED=true` 확인
+2. 5개의 R2 변수가 모두 설정되었는지 확인
+3. 서비스 재배포
 
-### Custom domain not working
+### 커스텀 도메인이 작동하지 않음
 
-**DNS not propagated yet**:
-- Wait 5-10 minutes after adding CNAME record
-- Use `dig cdn.yourdomain.com` to check DNS
+**DNS가 아직 전파되지 않음**:
+- CNAME 레코드 추가 후 5-10분 대기
+- `dig cdn.yourdomain.com`으로 DNS 확인
 
-**Wrong CNAME record**:
-- Must point to R2 endpoint (shown in Cloudflare dashboard)
-- Format: `tarotvoice-audio.1234567890abcdef.r2.cloudflarestorage.com`
+**잘못된 CNAME 레코드**:
+- R2 엔드포인트를 가리켜야 함 (Cloudflare 대시보드에 표시됨)
+- 형식: `tarotvoice-audio.1234567890abcdef.r2.cloudflarestorage.com`
 
-## Security Best Practices
+## 보안 모범 사례
 
-1. **Keep API tokens secure**
-   - Never commit tokens to git
-   - Only add to Railway environment variables
-   - Rotate tokens periodically
+1. **API 토큰 보안 유지**
+   - 토큰을 git에 커밋하지 말 것
+   - Railway 환경 변수에만 추가
+   - 정기적으로 토큰 교체
 
-2. **Use custom domain in production**
-   - More professional
-   - Better security (can use WAF rules)
+2. **프로덕션에서 커스텀 도메인 사용**
+   - 더 전문적
+   - 더 나은 보안 (WAF 규칙 사용 가능)
 
-3. **Set bucket permissions correctly**
-   - Enable public read for audio files
-   - Keep API tokens with minimal permissions (Object Read & Write only)
+3. **버킷 권한 올바르게 설정**
+   - 오디오 파일에 대한 공개 읽기 활성화
+   - API 토큰은 최소 권한으로 유지 (Object Read & Write만)
 
-4. **Monitor usage**
-   - Check R2 dashboard for storage usage
-   - Set up billing alerts in Cloudflare
+4. **사용량 모니터링**
+   - R2 대시보드에서 저장소 사용량 확인
+   - Cloudflare에서 청구 알림 설정
 
-## Migration Guide
+## 마이그레이션 가이드
 
-### Moving existing local files to R2
+### 기존 로컬 파일을 R2로 이동
 
-If you already have files in local storage:
+이미 로컬 저장소에 파일이 있는 경우:
 
-1. **Download all files from Railway**
+1. **Railway에서 모든 파일 다운로드**
    ```bash
-   # Use API to get list of all files
+   # API를 사용하여 모든 파일 목록 가져오기
    curl https://your-app.railway.app/api/audio-manager/list?limit=1000 > files.json
 
-   # Download each file
-   # (Script this based on your file list)
+   # 각 파일 다운로드
+   # (파일 목록을 기반으로 스크립트 작성)
    ```
 
-2. **Re-upload to R2**
-   - Enable R2 in environment variables
-   - Upload files again through the upload API
-   - The system will automatically use R2
+2. **R2로 재업로드**
+   - 환경 변수에서 R2 활성화
+   - 업로드 API를 통해 파일 다시 업로드
+   - 시스템이 자동으로 R2 사용
 
-3. **Update database**
-   - The new uploads will create new R2 entries
-   - Old local file records will still work (served from local storage)
-   - Gradually migrate by re-uploading important files
+3. **데이터베이스 업데이트**
+   - 새 업로드가 새 R2 항목 생성
+   - 이전 로컬 파일 레코드는 여전히 작동 (로컬 저장소에서 제공)
+   - 중요한 파일을 재업로드하여 점진적으로 마이그레이션
 
-### Testing before production
+### 프로덕션 전 테스트
 
-1. **Test in Railway with local storage first**
-2. **Set up R2 with test bucket**: `tarotvoice-audio-test`
-3. **Upload test files and verify streaming works**
-4. **Switch to production bucket when ready**
+1. **먼저 Railway에서 로컬 저장소로 테스트**
+2. **테스트 버킷으로 R2 설정**: `tarotvoice-audio-test`
+3. **테스트 파일 업로드 및 스트리밍 작동 확인**
+4. **준비되면 프로덕션 버킷으로 전환**
 
-## Next Steps
+## 다음 단계
 
-- ✓ R2 configured and working
-- [ ] Set up monitoring for R2 usage
-- [ ] Configure CDN caching rules (optional)
-- [ ] Set up file expiration policies (optional)
-- [ ] Implement file backups from R2 (optional)
+- ✓ R2 설정 및 작동
+- [ ] R2 사용량 모니터링 설정
+- [ ] CDN 캐싱 규칙 구성 (선택 사항)
+- [ ] 파일 만료 정책 설정 (선택 사항)
+- [ ] R2에서 파일 백업 구현 (선택 사항)
 
-## Support
+## 지원
 
-- **Cloudflare R2 Docs**: https://developers.cloudflare.com/r2/
-- **Railway Support**: https://railway.app/help
-- **API Server Issues**: Check server logs in Railway dashboard
+- **Cloudflare R2 문서**: https://developers.cloudflare.com/r2/
+- **Railway 지원**: https://railway.app/help
+- **API 서버 문제**: Railway 대시보드에서 서버 로그 확인

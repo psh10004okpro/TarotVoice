@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const audioManagerController = require('../controllers/audioManagerController');
-const upload = require('../middleware/upload');
+const upload = require('../middleware/uploadR2');
 
 /**
  * @route   POST /api/audio-manager/upload

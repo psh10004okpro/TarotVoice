@@ -13,6 +13,10 @@ const ttsRoutes = require('./routes/ttsRoutes');
 const audioManagerRoutes = require('./routes/audioManagerRoutes');
 const backupRoutes = require('./routes/backupRoutes');
 const { setupAutoBackup } = require('./controllers/backupController');
+const { setupGoogleCredentials } = require('./utils/googleCredentials');
+
+// Setup Google Cloud credentials for production
+setupGoogleCredentials();
 
 const app = express();
 const PORT = process.env.PORT || 3000;

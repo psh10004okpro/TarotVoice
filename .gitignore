@@ -16,3 +16,6 @@ coverage/
 *.db
 database.sqlite
 backups/
+
+# Google Cloud credentials (temporary file for production)
+google-credentials.json

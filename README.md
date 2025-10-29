@@ -99,6 +99,50 @@ npm start
 http://localhost:3000/
 ```
 
+## 🚀 Deployment to Railway
+
+For production deployment to Railway (recommended cloud platform):
+
+### Quick Start
+
+1. **Push to GitHub**
+```bash
+git push origin main
+```
+
+2. **Deploy to Railway**
+   - Go to [railway.app](https://railway.app)
+   - Click "Start a New Project"
+   - Select "Deploy from GitHub repo"
+   - Choose your repository
+   - Railway will automatically detect and deploy
+
+3. **Add PostgreSQL**
+   - In Railway dashboard, click "New"
+   - Select "Database" → "PostgreSQL"
+   - Database URL will be automatically configured
+
+4. **Configure Environment Variables**
+   - Go to "Variables" tab
+   - Add your API keys (see RAILWAY_DEPLOYMENT.md for details)
+
+5. **Add Volume for File Storage**
+   - Go to "Settings" → "Volumes"
+   - Add volume with mount path: `/app/uploads`
+
+**📖 Detailed deployment guide**: See [RAILWAY_DEPLOYMENT.md](./RAILWAY_DEPLOYMENT.md)
+
+### Database Support
+
+- **Development**: SQLite (default, no setup required)
+- **Production**: PostgreSQL (automatically provided by Railway)
+
+The application automatically detects and uses the appropriate database based on the `DATABASE_URL` environment variable.
+
+### Cost
+- **Railway**: ~$5-10/month (includes PostgreSQL + hosting)
+- **Free trial**: $5 credit for new users
+
 ## Audio File Management System
 
 The system includes a web-based admin panel for easy audio file management.

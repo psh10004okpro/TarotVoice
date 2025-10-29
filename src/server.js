@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
@@ -9,12 +10,15 @@ const { sequelize, testConnection } = require('./config/database');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const sttRoutes = require('./routes/sttRoutes');
 const ttsRoutes = require('./routes/ttsRoutes');
+const audioManagerRoutes = require('./routes/audioManagerRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Allow inline scripts for the admin panel
+}));
 app.use(cors());
 app.use(compression());
 
@@ -37,6 +41,9 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('combined'));
 }
 
+// Static files for admin panel
+app.use(express.static(path.join(__dirname, '../public')));
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
@@ -49,6 +56,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/stt', sttRoutes);
 app.use('/api/tts', ttsRoutes);
+app.use('/api/audio-manager', audioManagerRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {
@@ -69,8 +77,19 @@ app.get('/api', (req, res) => {
         list: 'GET /api/tts/list',
         voices: 'GET /api/tts/voices/:service',
       },
+      audioManager: {
+        upload: 'POST /api/audio-manager/upload',
+        list: 'GET /api/audio-manager/list',
+        info: 'GET /api/audio-manager/info/:id',
+        stream: 'GET /api/audio-manager/stream/:id',
+        download: 'GET /api/audio-manager/download/:id',
+        update: 'PUT /api/audio-manager/update/:id',
+        delete: 'DELETE /api/audio-manager/delete/:id',
+        statistics: 'GET /api/audio-manager/statistics',
+      },
     },
     documentation: 'See README.md for detailed API documentation',
+    adminPanel: 'http://localhost:' + PORT + '/',
   });
 });
 
@@ -93,7 +112,8 @@ const startServer = async () => {
       console.log(`\nServer running on port ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`Health check: http://localhost:${PORT}/health`);
-      console.log(`API info: http://localhost:${PORT}/api\n`);
+      console.log(`API info: http://localhost:${PORT}/api`);
+      console.log(`Admin Panel: http://localhost:${PORT}/\n`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

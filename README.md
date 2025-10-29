@@ -13,6 +13,13 @@ A comprehensive audio streaming API server with Speech-to-Text (STT) and Text-to
   - Naver Clova TTS
   - Google Cloud Text-to-Speech
 
+- **Audio File Management System**
+  - Web-based admin panel for managing audio files
+  - Upload audio files with custom IDs and descriptions
+  - Stream and download audio files
+  - Search and filter capabilities
+  - Statistics dashboard
+
 - **Audio Streaming**
   - Range-based HTTP streaming
   - Client-side caching support
@@ -81,6 +88,55 @@ npm run dev
 # Production mode
 npm start
 ```
+
+5. Access the admin panel:
+```
+http://localhost:3000/
+```
+
+## Audio File Management System
+
+The system includes a web-based admin panel for easy audio file management.
+
+### Access the Admin Panel
+
+Open your browser and navigate to `http://localhost:3000/` to access the audio file management interface.
+
+### Features
+
+- **Upload Audio Files**: Upload audio files with custom IDs, titles, and descriptions
+- **Browse Files**: View all uploaded audio files with search and pagination
+- **Play Audio**: Stream audio directly in the browser
+- **Download**: Download audio files to your device
+- **Edit Info**: Update file titles and descriptions
+- **Delete Files**: Remove files from the system
+- **Statistics**: View total files, storage size, plays, and downloads
+
+### Using the Web Interface
+
+1. **Upload a File**:
+   - Enter a unique ID (alphanumeric, underscore, hyphen only)
+   - Provide a title
+   - Add an optional description
+   - Select an audio file (MP3, WAV, OGG, M4A, WebM)
+   - Click "Upload"
+
+2. **Manage Files**:
+   - Use the search bar to find files by ID, title, or description
+   - Click "Play" to stream audio
+   - Click "Download" to save the file
+   - Click "Copy Stream URL" to get the direct streaming URL
+   - Click "Edit" to update file information
+   - Click "Delete" to remove the file
+
+3. **Access Files Programmatically**:
+   ```javascript
+   // Stream URL format
+   http://localhost:3000/api/audio-manager/stream/{fileId}
+
+   // Download URL format
+   http://localhost:3000/api/audio-manager/download/{fileId}
+   ```
 
 ## API Documentation
 
@@ -296,6 +352,223 @@ Response:
   "data": {
     "service": "google",
     "voices": [...]
+  }
+}
+```
+
+### Audio File Management APIs
+
+#### Upload Audio File
+
+Upload a new managed audio file with custom ID and metadata.
+
+```http
+POST /api/audio-manager/upload
+Content-Type: multipart/form-data
+
+Parameters:
+- audio (file): Audio file (required)
+- id (string): Custom ID for the file (required, alphanumeric, underscore, hyphen only)
+- title (string): Title of the audio file (required)
+- description (string): Description of the audio file (optional)
+
+Response:
+{
+  "success": true,
+  "data": {
+    "id": "tarot_card_01",
+    "title": "The Fool Card Reading",
+    "description": "Tarot card reading for The Fool",
+    "format": "mp3",
+    "file_size": 245678,
+    "streamUrl": "/api/audio-manager/stream/tarot_card_01",
+    "downloadUrl": "/api/audio-manager/download/tarot_card_01",
+    "created_at": "2024-01-01T00:00:00.000Z"
+  }
+}
+```
+
+Example with curl:
+```bash
+curl -X POST http://localhost:3000/api/audio-manager/upload \
+  -F "audio=@/path/to/audio.mp3" \
+  -F "id=tarot_card_01" \
+  -F "title=The Fool Card Reading" \
+  -F "description=Tarot card reading for The Fool"
+```
+
+#### List Audio Files
+
+Get a list of all managed audio files with search and pagination.
+
+```http
+GET /api/audio-manager/list?page=1&limit=10&search=tarot
+
+Query Parameters:
+- page (number): Page number (default: 1)
+- limit (number): Items per page (default: 50)
+- search (string): Search by ID, title, or description (optional)
+
+Response:
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "tarot_card_01",
+        "title": "The Fool Card Reading",
+        "description": "Tarot card reading for The Fool",
+        "original_filename": "fool.mp3",
+        "file_size": 245678,
+        "format": "mp3",
+        "mime_type": "audio/mpeg",
+        "download_count": 5,
+        "play_count": 12,
+        "last_accessed_at": "2024-01-01T00:00:00.000Z",
+        "created_at": "2024-01-01T00:00:00.000Z",
+        "streamUrl": "/api/audio-manager/stream/tarot_card_01",
+        "downloadUrl": "/api/audio-manager/download/tarot_card_01"
+      }
+    ],
+    "total": 50,
+    "page": 1,
+    "totalPages": 5
+  }
+}
+```
+
+#### Get Audio File Info
+
+Get detailed information about a specific audio file.
+
+```http
+GET /api/audio-manager/info/:id
+
+Response:
+{
+  "success": true,
+  "data": {
+    "id": "tarot_card_01",
+    "title": "The Fool Card Reading",
+    "description": "Tarot card reading for The Fool",
+    "original_filename": "fool.mp3",
+    "file_size": 245678,
+    "format": "mp3",
+    "mime_type": "audio/mpeg",
+    "download_count": 5,
+    "play_count": 12,
+    "last_accessed_at": "2024-01-01T00:00:00.000Z",
+    "created_at": "2024-01-01T00:00:00.000Z",
+    "streamUrl": "/api/audio-manager/stream/tarot_card_01",
+    "downloadUrl": "/api/audio-manager/download/tarot_card_01"
+  }
+}
+```
+
+#### Stream Audio File
+
+Stream an audio file with range request support.
+
+```http
+GET /api/audio-manager/stream/:id
+Headers:
+- Range: bytes=0-1023 (optional)
+
+Response:
+- Status: 206 Partial Content (with range) or 200 OK
+- Content-Type: audio/mpeg (or appropriate mime type)
+- Stream of audio data
+```
+
+Example usage in HTML:
+```html
+<audio controls>
+  <source src="http://localhost:3000/api/audio-manager/stream/tarot_card_01" type="audio/mpeg">
+</audio>
+```
+
+#### Download Audio File
+
+Download an audio file.
+
+```http
+GET /api/audio-manager/download/:id
+
+Response:
+- Downloads the audio file with original format
+- Filename: {id}.{format}
+```
+
+#### Update Audio File Info
+
+Update title and description of an audio file.
+
+```http
+PUT /api/audio-manager/update/:id
+Content-Type: application/json
+
+Body:
+{
+  "title": "Updated Title",
+  "description": "Updated description"
+}
+
+Response:
+{
+  "success": true,
+  "data": {
+    "id": "tarot_card_01",
+    "title": "Updated Title",
+    "description": "Updated description",
+    ...
+  }
+}
+```
+
+#### Delete Audio File
+
+Delete an audio file and its ID from the system.
+
+```http
+DELETE /api/audio-manager/delete/:id
+
+Response:
+{
+  "success": true,
+  "message": "Audio file 'tarot_card_01' has been deleted"
+}
+```
+
+#### Get Statistics
+
+Get statistics about all managed audio files.
+
+```http
+GET /api/audio-manager/statistics
+
+Response:
+{
+  "success": true,
+  "data": {
+    "totalFiles": 50,
+    "totalSize": 12345678,
+    "totalDownloads": 234,
+    "totalPlays": 567,
+    "recentFiles": [
+      {
+        "id": "tarot_card_01",
+        "title": "The Fool Card Reading",
+        "created_at": "2024-01-01T00:00:00.000Z"
+      }
+    ],
+    "popularFiles": [
+      {
+        "id": "tarot_card_01",
+        "title": "The Fool Card Reading",
+        "play_count": 12,
+        "download_count": 5
+      }
+    ]
   }
 }
 ```

@@ -28,6 +28,7 @@ const requireAuth = (req, res, next) => {
   // 헤더에서 인증 정보 확인
   const authHeader = req.headers.authorization;
   const apiKey = req.headers['x-api-key'];
+  const authCookie = req.cookies?.auth_token;
 
   let providedPassword = null;
 
@@ -38,6 +39,10 @@ const requireAuth = (req, res, next) => {
   // X-API-Key: <password> 형식
   else if (apiKey) {
     providedPassword = apiKey;
+  }
+  // 쿠키에서 확인 (웹 UI용)
+  else if (authCookie) {
+    providedPassword = authCookie;
   }
 
   // 비밀번호 확인

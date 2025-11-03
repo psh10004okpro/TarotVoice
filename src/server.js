@@ -5,9 +5,11 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const { sequelize, testConnection } = require('./config/database');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const { requireAuth, checkWebAuth } = require('./middleware/auth');
 const sttRoutes = require('./routes/sttRoutes');
 const ttsRoutes = require('./routes/ttsRoutes');
 const audioManagerRoutes = require('./routes/audioManagerRoutes');
@@ -39,6 +41,7 @@ app.use('/api/', limiter);
 // Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Logging
 if (process.env.NODE_ENV === 'development') {
@@ -47,8 +50,51 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('combined'));
 }
 
-// Static files for admin panel
-app.use(express.static(path.join(__dirname, '../public')));
+// 로그인 페이지 (인증 전에 제공)
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/login.html'));
+});
+
+// 로그인 API
+app.post('/api/auth/login', (req, res) => {
+  const { password } = req.body;
+  const accessPassword = process.env.ACCESS_PASSWORD;
+
+  // 비밀번호가 설정되지 않은 경우
+  if (!accessPassword) {
+    return res.json({ success: true, message: 'No authentication required' });
+  }
+
+  // 비밀번호 확인
+  if (password === accessPassword) {
+    return res.json({ success: true, message: 'Login successful' });
+  }
+
+  // 로그인 실패
+  return res.status(401).json({ success: false, message: 'Invalid password' });
+});
+
+// 로그아웃 API
+app.post('/api/auth/logout', (req, res) => {
+  res.clearCookie('auth_token');
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// Static files for admin panel (웹 인증 체크 적용)
+app.use(express.static(path.join(__dirname, '../public'), {
+  setHeaders: (res, path) => {
+    // HTML 파일에만 인증 체크 적용
+    if (path.endsWith('.html') && !path.endsWith('login.html')) {
+      // 미들웨어가 아닌 정적 파일이므로 여기서는 체크하지 않음
+      // 대신 라우트 핸들러를 추가
+    }
+  }
+}));
+
+// 웹 UI 루트 경로 (인증 체크)
+app.get('/', checkWebAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -59,11 +105,11 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API routes
-app.use('/api/stt', sttRoutes);
-app.use('/api/tts', ttsRoutes);
-app.use('/api/audio-manager', audioManagerRoutes);
-app.use('/api/backup', backupRoutes);
+// API routes (인증 적용)
+app.use('/api/stt', requireAuth, sttRoutes);
+app.use('/api/tts', requireAuth, ttsRoutes);
+app.use('/api/audio-manager', requireAuth, audioManagerRoutes);
+app.use('/api/backup', requireAuth, backupRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {

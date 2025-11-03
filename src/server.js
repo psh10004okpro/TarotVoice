@@ -50,6 +50,11 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('combined'));
 }
 
+// 웹 UI 루트 경로 (인증 체크) - Static보다 먼저!
+app.get('/', checkWebAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
 // 로그인 페이지 (인증 전에 제공)
 app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/login.html'));
@@ -80,21 +85,8 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
-// Static files for admin panel (웹 인증 체크 적용)
-app.use(express.static(path.join(__dirname, '../public'), {
-  setHeaders: (res, path) => {
-    // HTML 파일에만 인증 체크 적용
-    if (path.endsWith('.html') && !path.endsWith('login.html')) {
-      // 미들웨어가 아닌 정적 파일이므로 여기서는 체크하지 않음
-      // 대신 라우트 핸들러를 추가
-    }
-  }
-}));
-
-// 웹 UI 루트 경로 (인증 체크)
-app.get('/', checkWebAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
-});
+// Static files for admin panel (CSS, JS 등)
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Health check endpoint
 app.get('/health', (req, res) => {

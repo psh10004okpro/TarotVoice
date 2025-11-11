@@ -2,6 +2,27 @@
 
 지능형 캐싱 및 실시간 스트리밍 기능을 갖춘 음성-텍스트 변환(STT)과 텍스트-음성 변환(TTS) 서비스를 제공하는 종합 오디오 스트리밍 API 서버입니다.
 
+## 🌐 프로덕션 서버 정보
+
+**서버 상태**: ✅ 운영 중
+
+**메인 URL**: https://web-production-7d833.up.railway.app
+
+**주요 엔드포인트**:
+- 관리자 패널: https://web-production-7d833.up.railway.app/
+- API 문서: https://web-production-7d833.up.railway.app/api
+- Health Check: https://web-production-7d833.up.railway.app/health
+
+**API 엔드포인트**:
+```
+STT API: https://web-production-7d833.up.railway.app/api/stt/*
+TTS API: https://web-production-7d833.up.railway.app/api/tts/*
+Audio Manager: https://web-production-7d833.up.railway.app/api/audio-manager/*
+Backup API: https://web-production-7d833.up.railway.app/api/backup/*
+```
+
+**배포 플랫폼**: Railway (PostgreSQL)
+
 ## 주요 기능
 
 - **다중 STT 서비스**
